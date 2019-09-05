@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: webapp
+  name: webapp
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - image: registry.tozzi.fan/webapp
+        imagePullPolicy: Always
+        name: webapp
+        ports:
+        - containerPort: 80
+          protocol: TCP
+      restartPolicy: Always

@@ -1,0 +1,83 @@
+#!groovy
+
+def label = "executor-${UUID.randomUUID().toString()}"
+
+podTemplate (
+    label: label,
+    containers: [
+        containerTemplate(name: 'go', image: 'golang:1.12.9', ttyEnabled: true, command: 'cat'),
+        containerTemplate(name: 'buildah', image: 'sorintdev/buildah:f30.1', ttyEnabled: true, command: 'cat')
+    ],
+    volumes: [
+        hostPathVolume(hostPath: '/usr/bin/kubectl', mountPath: '/usr/bin/kubectl'),
+        secretVolume(mountPath: '/etc/kubernetes', secretName: 'cluster-admin')],
+)
+
+{
+    node(label) {
+
+        def scmVars
+        def version
+        def tarball
+        def commit
+        def branch = env.BRANCH_NAME
+        def isTag = false
+
+        stage ('Checkout') {
+            scmVars = git url: "https://code.tozzi.fan/dreamteam/api-go.git", branch: env.BRANCH_NAME
+            commit = scmVars.GIT_COMMIT
+        }
+
+        stage('Version') {
+            version = sh (script: "git tag -l --points-at ${commit}", returnStdout: true).trim()
+            isTag = version.contains('.')
+        if (!isTag) {
+            version = 'latest'
+            }
+        }
+
+        container('go') {
+
+            stage('Run tests') {
+                sh "go test ."
+            }
+
+            stage('Build with go') {
+                parallel(linux: {
+                    sh "CGO_ENABLED=0 go build -o api-go -a -x"
+                },
+                windows : {
+                    sh "GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o api-go.exe -a -x"
+                })
+            }
+            
+            stage('Publish artifact(s)') {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "curl -v -k -u ${USERNAME}:${PASSWORD} --upload-file api-go https://nexus.tozzi.fan/repository/binaries/api-go/api-go-linux-${version}"
+                    sh "curl -v -k -u ${USERNAME}:${PASSWORD} --upload-file api-go.exe https://nexus.tozzi.fan/repository/binaries/api-go/api-go-linux-${version}.exe"
+                }
+            }            
+        }
+
+        container('buildah') {
+
+            stage('Build docker image') {
+                sh "buildah --format docker --storage-driver vfs build-using-dockerfile -t registry.tozzi.fan/api-go:${version} ."
+            }
+
+            stage('Publish docker image') {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "buildah --format docker --storage-driver vfs --creds=${USERNAME}:${PASSWORD} push registry.tozzi.fan/api-go:${version}"
+                }
+            }
+
+            stage ('Kubernetes Deploy') {
+                if (branch == 'master') {
+                    sh "kubectl replace --force -f k8s/service.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/deployment.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/ingress.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                }
+            }
+        }
+    }
+}

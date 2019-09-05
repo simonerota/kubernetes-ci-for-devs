@@ -1,0 +1,64 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: jenkins
+  name: jenkins
+  namespace: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      initContainers:
+        - name: volume-mount-hack
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /var/jenkins_home"]
+          volumeMounts:
+          - name: jenkins-persistent-storage
+            mountPath: /var/jenkins_home
+      containers:
+      - image: jenkins/jenkins:2.192-centos
+        imagePullPolicy: IfNotPresent
+        name: jenkins
+        env:
+        - name: JENKINS_HOME
+          value: /var/jenkins_home
+        - name: JENKINS_SLAVE_AGENT_PORT
+          value: "50000"
+        ports:
+        - containerPort: 50000
+        - containerPort: 8080
+        - containerPort: 30202
+        volumeMounts:
+        - name: jenkins-persistent-storage
+          mountPath: /var/jenkins_home
+          subPath: jenkins_home
+        - mountPath: /run/docker.sock
+          name: docker-sock-volume
+        - mountPath: /usr/bin/docker
+          name: docker-bin
+        - mountPath: /usr/bin/kubectl
+          name: kubectl-bin
+      restartPolicy: Always
+      volumes:
+        - name: jenkins-persistent-storage
+          persistentVolumeClaim:
+            claimName: claim-jenkins
+        - name: docker-sock-volume
+          hostPath:
+            path: /var/run/docker.sock
+            type: File
+        - name: docker-bin
+          hostPath:
+            path: /usr/bin/docker
+            type: File
+        - name: kubectl-bin
+          hostPath:
+            path: /usr/bin/kubectl
+            type: File

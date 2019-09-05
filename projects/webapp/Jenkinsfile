@@ -1,0 +1,78 @@
+#!groovy
+
+def label = "executor-${UUID.randomUUID().toString()}"
+
+podTemplate (
+    label: label,
+    containers: [
+        containerTemplate(name: 'nodejs', image: 'node:8.16.1-alpine', ttyEnabled: true, command: 'cat'),
+        containerTemplate(name: 'buildah', image: 'sorintdev/buildah:f29.1', ttyEnabled: true, command: 'cat')
+    ],
+    volumes: [
+        hostPathVolume(hostPath: '/usr/bin/kubectl', mountPath: '/usr/bin/kubectl'),
+        secretVolume(mountPath: '/etc/kubernetes', secretName: 'cluster-admin')],
+)
+
+{
+    node(label) {
+
+        def scmVars
+        def version
+        def tarball
+        def commit
+        def branch = env.BRANCH_NAME
+        def isTag = false
+
+        stage ('Checkout') {
+            scmVars = git url: "https://code.tozzi.fan/dreamteam/webapp.git", branch: env.BRANCH_NAME
+            commit = scmVars.GIT_COMMIT
+        }
+
+        stage('Version') {
+            version = sh (script: "git tag -l --points-at ${commit}", returnStdout: true).trim()
+            isTag = version.contains('.')
+        if (!isTag) {
+            version = 'latest'
+            }
+        }
+
+        container('nodejs') {
+
+            stage('Run tests') {
+                sh "echo 'Pretending to run tests...'"
+            }
+
+        }
+
+        container('buildah') {
+
+            stage('Create tar.gz archive') {
+                sh "tar -cvzf webapp-${version}.tar.gz assets src index.html favicon.ico"
+            }
+
+            stage('Publish artifact(s)') {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "curl -v -k -u ${USERNAME}:${PASSWORD} --upload-file webapp-${version}.tar.gz https://nexus.tozzi.fan/repository/binaries/webapp/webapp-${version}.tar.gz"
+                }
+            }            
+
+            stage('Build docker image') {
+                sh "buildah --format docker --storage-driver vfs build-using-dockerfile -t registry.tozzi.fan/webapp:${version} ."
+            }
+
+            stage('Publish docker image') {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "buildah --format docker --storage-driver vfs --creds=${USERNAME}:${PASSWORD} push registry.tozzi.fan/webapp:${version}"
+                }
+            }
+
+            stage ('Kubernetes Deploy') {
+                if (branch == 'master') {
+                    sh "kubectl replace --force -f k8s/service.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/deployment.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/ingress.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                }
+            }
+        }
+    }
+}

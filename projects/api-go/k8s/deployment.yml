@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: api-go
+  name: api-go
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-go
+  template:
+    metadata:
+      labels:
+        app: api-go
+    spec:
+      containers:
+      - image: registry.tozzi.fan/api-go
+        imagePullPolicy: Always
+        name: api-go
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      restartPolicy: Always

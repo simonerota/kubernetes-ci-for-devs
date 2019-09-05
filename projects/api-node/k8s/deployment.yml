@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: api-node
+  name: api-node
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-node
+  template:
+    metadata:
+      labels:
+        app: api-node
+    spec:
+      containers:
+      - image: registry.tozzi.fan/api-node
+        imagePullPolicy: Always
+        name: api-node
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      restartPolicy: Always

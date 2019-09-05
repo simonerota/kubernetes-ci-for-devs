@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: api-python
+  namespace: default
+spec:
+  rules:
+  - host: api-python.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: api-python
+          servicePort: 8080
+

@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: jenkins
+  namespace: ci
+spec:
+  rules:
+  - host: jenkins.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: jenkins
+          servicePort: 8080
+

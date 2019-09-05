@@ -1,0 +1,44 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: gitea
+  name: gitea
+  namespace: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea
+  template:
+    metadata:
+      labels:
+        app: gitea
+    spec:
+      containers:
+      - image: gitea/gitea:1.9.2
+        imagePullPolicy: IfNotPresent
+        name: gitea
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+        - containerPort: 22
+          protocol: TCP
+        volumeMounts:
+        - name: gitea-persistent-storage
+          mountPath: /data
+        - name: app
+          mountPath: /custom/conf/
+          readOnly: true
+      restartPolicy: Always
+      volumes:
+      - name: gitea-persistent-storage
+        persistentVolumeClaim:
+          claimName: claim-gitea
+      - name: app
+        secret:
+          secretName: secret-gitea
+          items:
+          - key: app.ini
+            path: app.ini
+

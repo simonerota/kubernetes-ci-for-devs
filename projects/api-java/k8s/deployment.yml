@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: api-java
+  name: api-java
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-java
+  template:
+    metadata:
+      labels:
+        app: api-java
+    spec:
+      containers:
+      - image: registry.tozzi.fan/api-java
+        imagePullPolicy: Always
+        name: api-java
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      restartPolicy: Always

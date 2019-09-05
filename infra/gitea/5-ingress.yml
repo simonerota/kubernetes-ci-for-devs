@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gitea
+  namespace: ci
+spec:
+  rules:
+  - host: code.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: gitea-web
+          servicePort: 3000

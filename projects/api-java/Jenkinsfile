@@ -1,0 +1,80 @@
+#!groovy
+
+def label = "executor-${UUID.randomUUID().toString()}"
+
+def pomVersion() {
+	def matcher = readFile('pom.xml') =~ '<version>(.+?)</version>'
+	matcher ? matcher[0][1] : null
+}
+
+podTemplate (
+    label: label,
+    containers: [
+        containerTemplate(name: 'maven', image: 'maven:3.6.1-jdk-8-slim', ttyEnabled: true, command: 'cat'),
+        containerTemplate(name: 'buildah', image: 'sorintdev/buildah:f29.1', ttyEnabled: true, command: 'cat')
+    ],
+    volumes: [
+        secretVolume(mountPath: '/etc', secretName: 'nexus-secret'),
+        secretVolume(mountPath: '/etc/kubernetes', secretName: 'cluster-admin'),
+        hostPathVolume(hostPath: '/usr/bin/kubectl', mountPath: '/usr/bin/kubectl')]
+)
+
+{
+    node(label) {
+
+        def scmVars
+        def version
+        def tarball
+        def commit
+        def branch = env.BRANCH_NAME
+        def isTag = false
+
+        stage ('Checkout') {
+            scmVars = git url: "https://code.tozzi.fan/dreamteam/api-java.git", branch: env.BRANCH_NAME
+            commit = scmVars.GIT_COMMIT
+        }
+
+        stage('Version') {
+            version = pomVersion()
+            isTag = !version.contains('SNAPSHOT')
+        }
+
+        container('maven') {
+
+            stage('Build with maven') {
+                sh "mvn -B clean package"
+            }
+
+            // stage('SonarQube analysis') {
+            //     withSonarQubeEnv('Sonar') {
+            //         sh "SONAR_RUNNER_OPTS='-Djava.io.tmpdir=/tmp' mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.4.0.905:sonar"
+            //     }
+            // }
+
+            stage('Deploy Maven') {
+                sh "mvn -s /etc/settings.xml -B deploy"
+            }
+        }
+
+        container('buildah') {
+
+            stage('Build docker image') {
+                sh "buildah --format docker --storage-driver vfs build-using-dockerfile -t registry.tozzi.fan/api-java:${version} ."
+            }
+
+            stage('Publish docker image') {
+                withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "buildah --format docker --storage-driver vfs --creds=${USERNAME}:${PASSWORD} push registry.tozzi.fan/api-java:${version}"
+                }
+            }
+
+            stage ('Kubernetes Deploy') {
+                if (branch == 'master') {
+                    sh "kubectl replace --force -f k8s/service.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/deployment.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                    sh "kubectl replace --force -f k8s/ingress.yml --kubeconfig=/etc/kubernetes/kubernetes.conf"
+                }
+            }
+        }
+    }
+}

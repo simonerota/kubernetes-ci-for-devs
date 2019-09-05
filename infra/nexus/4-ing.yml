@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: ci
+  name: nexus
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  rules:
+  - host: nexus.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: nexus
+          servicePort: 8081
+  - host: registry.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: nexus
+          servicePort: 10000
+

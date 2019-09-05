@@ -1,0 +1,68 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: sonar
+  name: sonar
+  namespace: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonar
+  template:
+    metadata:
+      labels:
+        app: sonar
+    spec:
+      initContainers:
+      - name: volume-mount-hack-data
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /opt/sonarqube/data"]
+        volumeMounts:
+        - name: sonar-persistent-storage
+          mountPath: /opt/sonarqube/data
+      - name: volume-mount-hack-extensions
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /opt/sonarqube/extensions"]
+        volumeMounts:
+        - name: sonar-persistent-storage
+          mountPath: /opt/sonarqube/extensions
+      - name: increase-vm-max-map
+        image: busybox
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: increase-fd-ulimit
+        image: busybox
+        command: ["sh", "-c", "ulimit -n 65536 && ulimit -u 4096"]
+        securityContext:
+          privileged: true
+      containers:
+      - image: sonarqube:7.9.1-community
+        imagePullPolicy: IfNotPresent
+        name: sonar
+        env:
+          - name: SONARQUBE_JDBC_USERNAME
+            value: sonar
+          - name: SONARQUBE_JDBC_USERNAMEPASSWORD
+            value: sonar
+          - name: SONARQUBE_JDBC_URL
+            value: "jdbc:postgresql://postgres/sonar"
+        ports:
+        - containerPort: 9000
+          protocol: TCP
+        - containerPort: 9092
+          protocol: TCP
+        volumeMounts:
+        - name: sonar-persistent-storage
+          mountPath: /opt/sonarqube/data
+          subPath: data
+        - name: sonar-persistent-storage
+          mountPath: /opt/sonarqube/extensions
+          subPath: extensions
+      volumes:
+      - name: sonar-persistent-storage
+        persistentVolumeClaim:
+          claimName: claim-sonar
+      restartPolicy: Always

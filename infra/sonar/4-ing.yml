@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: ci
+  name: sonar
+spec:
+  rules:
+  - host: sonar.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: sonar
+          servicePort: 9000

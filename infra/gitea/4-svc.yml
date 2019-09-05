@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gitea
+  name: gitea-web
+  namespace: ci
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: gitea
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: gitea
+  name: gitea-ssh
+  namespace: ci
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 22
+    name: ssh
+    protocol: TCP
+    targetPort: 22
+    nodePort: 30022
+  selector:
+    app: gitea
+  sessionAffinity: None
+  type: NodePort

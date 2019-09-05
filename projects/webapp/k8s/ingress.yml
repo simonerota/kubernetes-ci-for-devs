@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: webapp
+  namespace: default
+spec:
+  rules:
+  - host: web.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: webapp
+          servicePort: 80
+

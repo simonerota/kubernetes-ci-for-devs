@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: api-python
+  name: api-python
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-python
+  template:
+    metadata:
+      labels:
+        app: api-python
+    spec:
+      containers:
+      - image: registry.tozzi.fan/api-python
+        imagePullPolicy: Always
+        name: api-python
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+      restartPolicy: Always

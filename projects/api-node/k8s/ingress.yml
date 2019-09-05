@@ -1,0 +1,14 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: api-node
+  namespace: default
+spec:
+  rules:
+  - host: api-node.tozzi.fan
+    http:
+      paths:
+      - backend:
+          serviceName: api-node
+          servicePort: 8080
+
