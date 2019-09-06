@@ -1,0 +1,33 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: api-all
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: www.tozzi.fan
+    http:
+      paths:
+      - path: /api/go
+        backend:
+          serviceName: api-go
+          servicePort: 8080
+      - path: /api/python
+        backend:
+          serviceName: api-python
+          servicePort: 8080
+      - path: /api/node
+        backend:
+          serviceName: api-node
+          servicePort: 8080
+      - path: /api/java
+        backend:
+          serviceName: api-java
+          servicePort: 8080
+      - path: /
+        backend:
+          serviceName: webapp
+          servicePort: 80
+
