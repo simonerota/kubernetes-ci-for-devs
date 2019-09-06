@@ -1,0 +1,24 @@
+#!/bin/bash
+# Simple script to extract certificates and keys from a kubernetes
+# configuration file and create a pfx certificate that can be used
+# to configure k8s credentials in jenkins
+
+if [ -z $1 ] || [ -z "$2" ]; then
+  echo "usage: jenkins-k8s-cert k8s-config-file output-cert-file"
+  exit 1
+fi
+
+if [ ! -f "$1" ]; then
+  echo "Fatal: cannot access $1"
+  exit 1
+fi
+
+grep certificate-authority-data "$1" | awk '{print $2}' | base64 -d > "${2}.ca"
+grep client-certificate-data "$1" | awk '{print $2}' | base64 -d > "${2}.crt"
+grep client-key-data "$1" | awk '{print $2}' | base64 -d > "${2}.key"
+
+openssl pkcs12 -export -out "${2}.pfx" -inkey "${2}.key" -in "${2}.crt" -certfile "${2}.ca"
+
+rm "${2}.ca"
+rm "${2}.crt"
+rm "${2}.key"

@@ -23,7 +23,7 @@ spec:
           - name: jenkins-persistent-storage
             mountPath: /var/jenkins_home
       containers:
-      - image: jenkins/jenkins:2.192-centos
+      - image: jenkins/jenkins:2.193-centos
         imagePullPolicy: IfNotPresent
         name: jenkins
         env:
