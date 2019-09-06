@@ -1,6 +1,7 @@
 var gdata = '';
 var jdata = '';
 var pdata = '';
+var vdata = '';
 
 var loadG = function() {
     m.request({
@@ -33,6 +34,17 @@ var loadJ = function() {
     })
 }
 
+var loadV = function() {
+    m.request({
+        method: "GET",
+        url: "https://api-java.tozzi.fan/"
+    })
+    .then(function(data) {
+       vdata = data;
+    })
+}
+
+
 var LanguageLoader = {
     view: function() {
         return m("main", [
@@ -49,6 +61,10 @@ var LanguageLoader = {
             m("p", jdata.Name),
             m("p", jdata.Year),
             m("p", jdata.Notes),
+            m("button", {onclick: loadV}, "Java"),
+            m("p", vdata.Name),
+            m("p", vdata.Year),
+            m("p", vdata.Notes)
         ])
     }
 }
