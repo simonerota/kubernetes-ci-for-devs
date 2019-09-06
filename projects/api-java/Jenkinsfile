@@ -14,7 +14,7 @@ podTemplate (
         containerTemplate(name: 'buildah', image: 'sorintdev/buildah:f29.1', ttyEnabled: true, command: 'cat')
     ],
     volumes: [
-        secretVolume(mountPath: '/etc', secretName: 'nexus-secret'),
+        // secretVolume(mountPath: '/etc', secretName: 'nexus-secret'),
         secretVolume(mountPath: '/etc/kubernetes', secretName: 'cluster-admin'),
         hostPathVolume(hostPath: '/usr/bin/kubectl', mountPath: '/usr/bin/kubectl')]
 )
@@ -51,20 +51,20 @@ podTemplate (
             //     }
             // }
 
-            stage('Deploy Maven') {
-                sh "mvn -s /etc/settings.xml -B deploy"
-            }
+            // stage('Deploy Maven') {
+            //    sh "mvn -s /etc/settings.xml -B deploy"
+            // }
         }
 
         container('buildah') {
 
             stage('Build docker image') {
-                sh "buildah --format docker --storage-driver vfs build-using-dockerfile -t registry.tozzi.fan/api-java:${version} ."
+                sh "buildah --format docker --storage-driver vfs build-using-dockerfile -t registry.tozzi.fan/api-java:latest ."
             }
 
             stage('Publish docker image') {
                 withCredentials([usernamePassword(credentialsId: 'nexus', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "buildah --format docker --storage-driver vfs --creds=${USERNAME}:${PASSWORD} push registry.tozzi.fan/api-java:${version}"
+                    sh "buildah --format docker --storage-driver vfs --creds=${USERNAME}:${PASSWORD} push registry.tozzi.fan/api-java:latest"
                 }
             }
 
