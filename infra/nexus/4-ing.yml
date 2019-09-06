@@ -4,7 +4,7 @@ metadata:
   namespace: ci
   name: nexus
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "250m"
 spec:
   rules:
   - host: nexus.tozzi.fan
